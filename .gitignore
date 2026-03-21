@@ -29,8 +29,6 @@ db.sqlite
 /static/
 /media/
 staticfiles/
-migrations/
-!migrations/__init__.py
 
 # Database
 *.sqlite3

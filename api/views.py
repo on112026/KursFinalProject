@@ -28,9 +28,15 @@ class LoginView(GenericAPIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        email = request.data.get('email')
+        password = request.data.get('password')
+        
+        if not email or not password:
+            return Response({'error': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            user = User.objects.get(email=request.data['email'])
-            if not user.check_password(request.data['password']):
+            user = User.objects.get(email=email)
+            if not user.check_password(password):
                 return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
             refresh = RefreshToken.for_user(user)
