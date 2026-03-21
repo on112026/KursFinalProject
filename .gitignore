@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.spec.bak
+*.pot
+*.mo
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite
+/static/
+/media/
+staticfiles/
+migrations/
+!migrations/__init__.py
+
+# Database
+*.sqlite3
+*.db
+
+# REST Framework
+.swagger/
+coverage.xml
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+.coverage
+.ruff_cache/
