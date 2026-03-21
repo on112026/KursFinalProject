@@ -19,11 +19,15 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class CompanySerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
         model = Company
         fields = ['id', 'inn', 'name', 'owner']
 
 class StorageSerializer(serializers.ModelSerializer):
+    company = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
         model = Storage
         fields = ['id', 'address', 'company']

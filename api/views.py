@@ -53,7 +53,7 @@ class CreateCompanyView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if request.user.company:
+        if hasattr(request.user, 'company') and request.user.company:
             return Response({'error': 'User already has a company'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = CompanySerializer(data=request.data)
@@ -67,7 +67,7 @@ class GetCompanyView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if not request.user.company:
+        if not hasattr(request.user, 'company') or not request.user.company:
             return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(CompanySerializer(request.user.company).data)
@@ -77,7 +77,7 @@ class UpdateCompanyView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-        if not request.user.company:
+        if not hasattr(request.user, 'company') or not request.user.company:
             return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)
 
         if request.user.company.owner != request.user:
@@ -94,7 +94,7 @@ class DeleteCompanyView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request):
-        if not request.user.company:
+        if not hasattr(request.user, 'company') or not request.user.company:
             return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)
 
         if request.user.company.owner != request.user:
@@ -108,7 +108,7 @@ class GetStorageView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if not request.user.company or not request.user.company.storage:
+        if not hasattr(request.user, 'company') or not request.user.company or not hasattr(request.user.company, 'storage') or not request.user.company.storage:
             return Response({'error': 'Storage not found'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(StorageSerializer(request.user.company.storage).data)
@@ -133,10 +133,10 @@ class CreateStorageView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not request.user.company:
+        if not hasattr(request.user, 'company') or not request.user.company:
             return Response({'error': 'User must have a company to create storage'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if request.user.company.storage:
+        if hasattr(request.user.company, 'storage') and request.user.company.storage:
             return Response({'error': 'Company already has a storage'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = StorageSerializer(data=request.data)
