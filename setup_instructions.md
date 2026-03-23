@@ -8,8 +8,8 @@
 Создайте виртуальное окружение для изоляции зависимостей проекта:
 
 ```bash
-git clone https://github.com/on112026/FinalProject01.git
-cd FinalProject01
+git clone https://github.com/on112026/FinalProject02.git
+cd FinalProject02
 python3 -m venv venv
 ```
 

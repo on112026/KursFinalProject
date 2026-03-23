@@ -23,6 +23,7 @@ class Company(models.Model):
     inn = models.CharField(max_length=12, unique=True)
     name = models.CharField(max_length=255)
     owner = models.OneToOneField(User, on_delete=models.CASCADE, related_name='company')
+    users = models.ManyToManyField(User, related_name='company_users', blank=True)
 
     def __str__(self):
         return self.name
@@ -33,3 +34,50 @@ class Storage(models.Model):
 
     def __str__(self):
         return f"Storage for {self.company.name}"
+
+class Supplier(models.Model):
+    """Модель поставщика"""
+    name = models.CharField(max_length=255)
+    contact_info = models.TextField(blank=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='suppliers')
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+class Product(models.Model):
+    """Модель товара"""
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    quantity = models.PositiveIntegerField(default=0)
+    storage = models.ForeignKey(Storage, on_delete=models.CASCADE, related_name='products')
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        ordering = ['title']
+
+class Supply(models.Model):
+    """Модель поставки товаров"""
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='supplies')
+    storage = models.ForeignKey(Storage, on_delete=models.CASCADE, related_name='supplies')
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Supply #{self.id} from {self.supplier.name}"
+
+    class Meta:
+        ordering = ['-date']
+
+class SupplyProduct(models.Model):
+    """Промежуточная модель для связи Supply и Product"""
+    supply = models.ForeignKey(Supply, on_delete=models.CASCADE, related_name='supply_products')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='supply_products')
+    quantity = models.PositiveIntegerField()
+
+    def __str__(self):
+        return f"{self.product.title} x{self.quantity} in Supply #{self.supply.id}"
