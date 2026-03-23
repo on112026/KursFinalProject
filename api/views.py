@@ -3,15 +3,18 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 from .models import User, Company, Storage, Supplier, Product, Supply, SupplyProduct
 from .serializers import (
     UserSerializer, CompanySerializer, StorageSerializer,
     SupplierSerializer, SupplierCreateSerializer,
     ProductSerializer, ProductCreateSerializer, ProductListSerializer,
-    SupplySerializer, SupplyCreateSerializer, SupplyListSerializer, SupplyCreateResponseSerializer
+    SupplySerializer, SupplyCreateSerializer, SupplyListSerializer, SupplyCreateResponseSerializer,
+    AttachUserSerializer
 )
 from rest_framework.exceptions import PermissionDenied
 from django.db import transaction
+
 
 def get_user_company(user):
     """Получить компанию пользователя (владелец или привязанный пользователь)"""
@@ -23,6 +26,7 @@ def get_user_company(user):
     from .models import Company
     company = Company.objects.filter(users=user).first()
     return company
+
 
 class RegisterView(GenericAPIView):
     serializer_class = UserSerializer
@@ -39,6 +43,7 @@ class RegisterView(GenericAPIView):
                 'user': UserSerializer(user).data
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class LoginView(GenericAPIView):
     serializer_class = UserSerializer
@@ -65,6 +70,7 @@ class LoginView(GenericAPIView):
         except User.DoesNotExist:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
+
 class CreateCompanyView(GenericAPIView):
     serializer_class = CompanySerializer
     permission_classes = [IsAuthenticated]
@@ -79,6 +85,7 @@ class CreateCompanyView(GenericAPIView):
             return Response(CompanySerializer(company).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class GetCompanyView(GenericAPIView):
     serializer_class = CompanySerializer
     permission_classes = [IsAuthenticated]
@@ -88,6 +95,7 @@ class GetCompanyView(GenericAPIView):
             return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(CompanySerializer(request.user.company).data)
+
 
 class UpdateCompanyView(GenericAPIView):
     serializer_class = CompanySerializer
@@ -106,6 +114,7 @@ class UpdateCompanyView(GenericAPIView):
             return Response(CompanySerializer(request.user.company).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class DeleteCompanyView(GenericAPIView):
     serializer_class = CompanySerializer
     permission_classes = [IsAuthenticated]
@@ -120,20 +129,24 @@ class DeleteCompanyView(GenericAPIView):
         request.user.company.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class GetStorageView(GenericAPIView):
     serializer_class = StorageSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(operation_id="storage_list")
     def get(self, request):
         if not hasattr(request.user, 'company') or not request.user.company or not hasattr(request.user.company, 'storage') or not request.user.company.storage:
             return Response({'error': 'Storage not found'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(StorageSerializer(request.user.company.storage).data)
 
+
 class GetStorageByIdView(GenericAPIView):
     serializer_class = StorageSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(operation_id="storage_retrieve")
     def get(self, request, storage_id):
         try:
             storage = Storage.objects.get(id=storage_id)
@@ -144,6 +157,7 @@ class GetStorageByIdView(GenericAPIView):
             return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
 
         return Response(StorageSerializer(storage).data)
+
 
 class CreateStorageView(GenericAPIView):
     serializer_class = StorageSerializer
@@ -161,6 +175,7 @@ class CreateStorageView(GenericAPIView):
             storage = serializer.save(company=request.user.company)
             return Response(StorageSerializer(storage).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UpdateStorageView(GenericAPIView):
     serializer_class = StorageSerializer
@@ -181,6 +196,7 @@ class UpdateStorageView(GenericAPIView):
             return Response(StorageSerializer(storage).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class DeleteStorageView(GenericAPIView):
     serializer_class = StorageSerializer
     permission_classes = [IsAuthenticated]
@@ -192,10 +208,11 @@ class DeleteStorageView(GenericAPIView):
             return Response({'error': 'Storage not found'}, status=status.HTTP_404_NOT_FOUND)
 
         if storage.company.owner != request.user:
-            raise PermissionDenied('Only company owner can delete storage')
+            raise PermissionDenied('Only company owner can update storage')
 
         storage.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 # ===== Supplier Views =====
 
@@ -204,6 +221,7 @@ class SupplierListCreateView(GenericAPIView):
     serializer_class = SupplierCreateSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(operation_id="suppliers_list")
     def get(self, request):
         """Получить список поставщиков компании"""
         company = get_user_company(request.user)
@@ -225,6 +243,7 @@ class SupplierListCreateView(GenericAPIView):
             return Response(SupplierSerializer(supplier).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class SupplierDetailView(GenericAPIView):
     """Получить / Изменить / Удалить поставщика"""
     serializer_class = SupplierSerializer
@@ -241,6 +260,7 @@ class SupplierDetailView(GenericAPIView):
             return None
         return supplier
 
+    @extend_schema(operation_id="suppliers_retrieve")
     def get(self, request, supplier_id):
         supplier = self.get_object(supplier_id, request.user)
         if not supplier:
@@ -266,12 +286,18 @@ class SupplierDetailView(GenericAPIView):
         supplier.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 # ===== Product Views =====
 
 class ProductListCreateView(GenericAPIView):
     """Список товаров / Создание товара"""
+    serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: ProductListSerializer(many=True)},
+        operation_id="products_list"
+    )
     def get(self, request):
         """Получить список товаров компании"""
         company = get_user_company(request.user)
@@ -284,6 +310,11 @@ class ProductListCreateView(GenericAPIView):
         products = Product.objects.filter(storage=company.storage)
         return Response(ProductListSerializer(products, many=True).data)
 
+    @extend_schema(
+        request=ProductCreateSerializer,
+        responses={201: ProductSerializer},
+        operation_id="products_create"
+    )
     def post(self, request):
         """Создать новый товар (quantity = 0)"""
         company = get_user_company(request.user)
@@ -302,8 +333,10 @@ class ProductListCreateView(GenericAPIView):
             return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class ProductDetailView(GenericAPIView):
     """Получить / Изменить / Удалить товар"""
+    serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self, product_id, user):
@@ -317,12 +350,18 @@ class ProductDetailView(GenericAPIView):
             return None
         return product
 
+    @extend_schema(operation_id="products_retrieve")
     def get(self, request, product_id):
         product = self.get_object(product_id, request.user)
         if not product:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
         return Response(ProductSerializer(product).data)
 
+    @extend_schema(
+        request=ProductCreateSerializer,
+        responses={200: ProductSerializer},
+        operation_id="products_update"
+    )
     def put(self, request, product_id):
         product = self.get_object(product_id, request.user)
         if not product:
@@ -339,6 +378,7 @@ class ProductDetailView(GenericAPIView):
             return Response(ProductSerializer(product).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(operation_id="products_delete")
     def delete(self, request, product_id):
         product = self.get_object(product_id, request.user)
         if not product:
@@ -346,6 +386,7 @@ class ProductDetailView(GenericAPIView):
 
         product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 # ===== Supply Views =====
 
@@ -362,10 +403,17 @@ class SupplyListView(GenericAPIView):
         supplies = Supply.objects.filter(storage=company.storage)
         return Response(SupplyListSerializer(supplies, many=True).data)
 
+
 class SupplyCreateView(GenericAPIView):
     """Создание поставки товаров"""
+    serializer_class = SupplyCreateSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=SupplyCreateSerializer,
+        responses={201: SupplyCreateResponseSerializer},
+        operation_id="supplies_create"
+    )
     def post(self, request):
         company = get_user_company(request.user)
         if not company:
@@ -389,9 +437,9 @@ class SupplyCreateView(GenericAPIView):
         if not supplier_id:
             return Response({'error': 'supplier_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Проверяем, что поставщик принадлежит компании
+            # Проверяем, что поставщик принадлежит компании
         try:
-            supplier = Supplier.objects.get(id=supplier_id, company=request.user.company)
+            supplier = Supplier.objects.get(id=supplier_id, company=company)
         except Supplier.DoesNotExist:
             return Response({'error': 'Supplier not found or does not belong to your company'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -429,12 +477,18 @@ class SupplyCreateView(GenericAPIView):
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
 # ===== Company User Attachment Views =====
 
 class AttachUserToCompanyView(GenericAPIView):
     """Прикрепление пользователя к компании (только для владельца)"""
+    serializer_class = AttachUserSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: OpenApiResponse(description='User attached successfully')},
+        operation_id="attach_user_to_company"
+    )
     def post(self, request):
         if not hasattr(request.user, 'company') or not request.user.company:
             return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)

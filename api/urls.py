@@ -1,7 +1,12 @@
 """API URL Configuration"""
 
 from django.urls import path
-from drf_spectacular.views import SpectacularJSONAPIView
+from drf_spectacular.views import (
+    SpectacularJSONAPIView,
+    SpectacularYAMLAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
 from .views import (
     RegisterView, LoginView, CreateCompanyView, GetCompanyView,
     UpdateCompanyView, DeleteCompanyView, GetStorageView,
@@ -36,6 +41,8 @@ urlpatterns = [
     path('supplies/', SupplyListView.as_view(), name='supplies_list'),
     path('supplies/create/', SupplyCreateView.as_view(), name='supply_create'),
     
-    path('schema/', SpectacularJSONAPIView.as_view(), name='openapi-schema'),
-    path('swagger/', SpectacularJSONAPIView.as_view(), name='swagger-ui'),
+    path('schema/', SpectacularJSONAPIView.as_view(), name='schema'),
+    path('schema/yaml/', SpectacularYAMLAPIView.as_view(), name='schema-yaml'),
+    path('swagger/', SpectacularSwaggerView.as_view(), name='swagger'),
+    path('redoc/', SpectacularRedocView.as_view(), name='redoc'),
 ]

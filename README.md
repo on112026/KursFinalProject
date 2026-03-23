@@ -39,5 +39,6 @@ python manage.py runserver
 ## Доступ
 
 - API: http://127.0.0.1:8000/api
-- Swagger UI: http://127.0.0.1:8000/swagger
+- Swagger UI: http://127.0.0.1:8000/api/swagger
+- Redoc: http://127.0.0.1:8000/api/redoc
 - Admin: http://127.0.0.1:8000/admin/

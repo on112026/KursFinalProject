@@ -1,4 +1,8 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
+from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.types import OpenApiTypes
+from typing import List, Dict, Any
 from .models import User, Company, Storage, Supplier, Product, Supply, SupplyProduct
 
 class UserSerializer(serializers.ModelSerializer):
@@ -90,6 +94,17 @@ class SupplyCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("Quantity must be positive")
         return value
 
+class AttachUserSerializer(serializers.Serializer):
+    """Сериализатор для прикрепления пользователя к компании"""
+    user_id = serializers.IntegerField(required=False)
+    email = serializers.EmailField(required=False)
+
+    def validate(self, data):
+        if not data.get('user_id') and not data.get('email'):
+            raise serializers.ValidationError("Either 'user_id' or 'email' must be provided")
+        return data
+
+
 class SupplyCreateResponseSerializer(serializers.ModelSerializer):
     """Сериализатор для ответа при создании поставки"""
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
@@ -99,10 +114,10 @@ class SupplyCreateResponseSerializer(serializers.ModelSerializer):
         model = Supply
         fields = ['id', 'supplier_name', 'date', 'products']
     
-    def get_products(self, obj):
-        return SupplyProduct.objects.filter(supply=obj).values(
+    def get_products(self, obj) -> List[Dict[str, Any]]:
+        return list(SupplyProduct.objects.filter(supply=obj).values(
             'product__id', 'product__title', 'quantity'
-        )
+        ))
 
 class SupplyListSerializer(serializers.ModelSerializer):
     """Сериализатор для списка поставок"""
