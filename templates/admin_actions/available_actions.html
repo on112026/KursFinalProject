@@ -1,0 +1,483 @@
+<style>
+    .available-actions-container {
+        margin: 20px 0;
+    }
+    
+    .actions-section {
+        margin-bottom: 25px;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .actions-section-header {
+        background: #4479DA;
+        color: white;
+        padding: 12px 16px;
+        font-weight: bold;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .actions-section-header .icon {
+        font-size: 16px;
+    }
+    
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 12px;
+        padding: 16px;
+    }
+    
+    .action-card {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        padding: 14px;
+        border: 1px solid #e5e5e5;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        background: #fafafa;
+    }
+    
+    .action-card:hover {
+        background: #f0f7ff;
+        border-color: #4479DA;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(68, 121, 218, 0.2);
+    }
+    
+    .action-card-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    
+    .action-card .icon {
+        font-size: 18px;
+    }
+    
+    .action-card .title {
+        font-weight: bold;
+        color: #333;
+        font-size: 14px;
+    }
+    
+    .action-card .description {
+        color: #666;
+        font-size: 12px;
+        margin-bottom: 10px;
+        line-height: 1.4;
+    }
+    
+    .action-card .api-info {
+        background: #f5f5f5;
+        padding: 8px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .action-card .api-url {
+        color: #555;
+        font-family: monospace;
+        word-break: break-all;
+    }
+    
+    .action-card .api-method {
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-weight: bold;
+        font-size: 10px;
+        text-transform: uppercase;
+    }
+    
+    .method-get { background: #61affe; color: white; }
+    .method-post { background: #49cc90; color: white; }
+    .method-put { background: #fca130; color: white; }
+    .method-delete { background: #f93e3e; color: white; }
+    .method-patch { background: #50e3c2; color: white; }
+    
+    .section-title-company { background: #2e7d32; }
+    .section-title-storage { background: #1565c0; }
+    .section-title-suppliers { background: #ef6c00; }
+    .section-title-products { background: #7b1fa2; }
+    .section-title-supplies { background: #00838f; }
+    .section-title-sales { background: #c62828; }
+    .section-title-user { background: #5d4037; }
+    .section-title-api { background: #455a64; }
+    .section-title-create-company { background: #ff9800; }
+    
+    .no-company-notice {
+        background: #fff3e0;
+        border: 1px solid #ffb74d;
+        border-radius: 6px;
+        padding: 20px;
+        text-align: center;
+        color: #e65100;
+    }
+    
+    .no-company-notice .icon {
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+    
+    .api-endpoint-card {
+        background: #fafafa;
+        border: 1px solid #e5e5e5;
+        border-radius: 6px;
+        padding: 14px;
+    }
+    
+    .api-endpoint-title {
+        font-weight: bold;
+        color: #333;
+        font-size: 14px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e5e5e5;
+    }
+    
+    .api-endpoint-list {
+        font-size: 12px;
+        line-height: 1.8;
+        color: #555;
+    }
+    
+    .api-endpoint-list code {
+        font-family: monospace;
+        background: #f5f5f5;
+        padding: 2px 4px;
+        border-radius: 3px;
+        color: #333;
+    }
+    
+    .api-endpoint-list a {
+        text-decoration: none;
+        color: #555;
+        display: inline;
+    }
+    
+    .api-endpoint-list a:hover {
+        text-decoration: underline;
+        color: #4479DA;
+    }
+    
+    .api-endpoint-list a:hover code {
+        background: #e8f0fe;
+        color: #4479DA;
+    }
+</style>
+
+<div class="available-actions-container">
+    {% if actions.create_company %}
+        <div class="actions-section">
+            <div class="actions-section-header section-title-create-company">
+                <span class="icon">🏢</span> Быстрый старт
+            </div>
+            <div class="actions-grid">
+                {% for action in actions.create_company %}
+                    <a href="{{ action.url }}" class="action-card">
+                        <div class="action-card-header">
+                            <span class="icon">{{ action.icon }}</span>
+                            <span class="title">{{ action.title }}</span>
+                        </div>
+                        <div class="description">{{ action.description }}</div>
+                        <div class="api-info">
+                            <span class="api-url">{{ action.api_url }}</span>
+                            {% if action.api_method %}
+                                <span class="api-method method-{{ action.api_method|lower }}">{{ action.api_method }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    {% if actions.company %}
+        <div class="actions-section">
+            <div class="actions-section-header section-title-company">
+                <span class="icon">🏢</span> Компания
+            </div>
+            <div class="actions-grid">
+                {% for action in actions.company %}
+                    <a href="{{ action.url }}" class="action-card">
+                        <div class="action-card-header">
+                            <span class="icon">{{ action.icon }}</span>
+                            <span class="title">{{ action.title }}</span>
+                        </div>
+                        <div class="description">{{ action.description }}</div>
+                        <div class="api-info">
+                            <span class="api-url">{{ action.api_url }}</span>
+                            {% if action.api_method %}
+                                <span class="api-method method-{{ action.api_method|lower }}">{{ action.api_method }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    {% if actions.storage %}
+        <div class="actions-section">
+            <div class="actions-section-header section-title-storage">
+                <span class="icon">📦</span> Склад
+            </div>
+            <div class="actions-grid">
+                {% for action in actions.storage %}
+                    <a href="{{ action.url }}" class="action-card">
+                        <div class="action-card-header">
+                            <span class="icon">{{ action.icon }}</span>
+                            <span class="title">{{ action.title }}</span>
+                        </div>
+                        <div class="description">{{ action.description }}</div>
+                        <div class="api-info">
+                            <span class="api-url">{{ action.api_url }}</span>
+                            {% if action.api_method %}
+                                <span class="api-method method-{{ action.api_method|lower }}">{{ action.api_method }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    {% if actions.suppliers %}
+        <div class="actions-section">
+            <div class="actions-section-header section-title-suppliers">
+                <span class="icon">🚚</span> Поставщики
+            </div>
+            <div class="actions-grid">
+                {% for action in actions.suppliers %}
+                    <a href="{{ action.url }}" class="action-card">
+                        <div class="action-card-header">
+                            <span class="icon">{{ action.icon }}</span>
+                            <span class="title">{{ action.title }}</span>
+                        </div>
+                        <div class="description">{{ action.description }}</div>
+                        <div class="api-info">
+                            <span class="api-url">{{ action.api_url }}</span>
+                            {% if action.api_method %}
+                                <span class="api-method method-{{ action.api_method|lower }}">{{ action.api_method }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    {% if actions.products %}
+        <div class="actions-section">
+            <div class="actions-section-header section-title-products">
+                <span class="icon">📋</span> Товары
+            </div>
+            <div class="actions-grid">
+                {% for action in actions.products %}
+                    <a href="{{ action.url }}" class="action-card">
+                        <div class="action-card-header">
+                            <span class="icon">{{ action.icon }}</span>
+                            <span class="title">{{ action.title }}</span>
+                        </div>
+                        <div class="description">{{ action.description }}</div>
+                        <div class="api-info">
+                            <span class="api-url">{{ action.api_url }}</span>
+                            {% if action.api_method %}
+                                <span class="api-method method-{{ action.api_method|lower }}">{{ action.api_method }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    {% if actions.supplies %}
+        <div class="actions-section">
+            <div class="actions-section-header section-title-supplies">
+                <span class="icon">📥</span> Поставки
+            </div>
+            <div class="actions-grid">
+                {% for action in actions.supplies %}
+                    <a href="{{ action.url }}" class="action-card">
+                        <div class="action-card-header">
+                            <span class="icon">{{ action.icon }}</span>
+                            <span class="title">{{ action.title }}</span>
+                        </div>
+                        <div class="description">{{ action.description }}</div>
+                        <div class="api-info">
+                            <span class="api-url">{{ action.api_url }}</span>
+                            {% if action.api_method %}
+                                <span class="api-method method-{{ action.api_method|lower }}">{{ action.api_method }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    {% if actions.sales %}
+        <div class="actions-section">
+            <div class="actions-section-header section-title-sales">
+                <span class="icon">💰</span> Продажи
+            </div>
+            <div class="actions-grid">
+                {% for action in actions.sales %}
+                    <a href="{{ action.url }}" class="action-card">
+                        <div class="action-card-header">
+                            <span class="icon">{{ action.icon }}</span>
+                            <span class="title">{{ action.title }}</span>
+                        </div>
+                        <div class="description">{{ action.description }}</div>
+                        <div class="api-info">
+                            <span class="api-url">{{ action.api_url }}</span>
+                            {% if action.api_method %}
+                                <span class="api-method method-{{ action.api_method|lower }}">{{ action.api_method }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    {% if actions.user_management %}
+        <div class="actions-section">
+            <div class="actions-section-header section-title-user">
+                <span class="icon">👥</span> Управление пользователями
+            </div>
+            <div class="actions-grid">
+                {% for action in actions.user_management %}
+                    <a href="{{ action.url }}" class="action-card">
+                        <div class="action-card-header">
+                            <span class="icon">{{ action.icon }}</span>
+                            <span class="title">{{ action.title }}</span>
+                        </div>
+                        <div class="description">{{ action.description }}</div>
+                        <div class="api-info">
+                            <span class="api-url">{{ action.api_url }}</span>
+                            {% if action.api_method %}
+                                <span class="api-method method-{{ action.api_method|lower }}">{{ action.api_method }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    {% if not actions %}
+        <div class="actions-section">
+            <div class="actions-section-header section-title-api">
+                <span class="icon">🔗</span> Доступные API Endpoints
+            </div>
+            <div class="actions-grid">
+                <a href="/admin/api/company/" class="action-card">
+                    <div class="action-card-header">
+                        <span class="icon">🏢</span>
+                        <span class="title">Компания</span>
+                    </div>
+                    <div class="api-info">
+                        <span class="api-url">/admin/api/company/</span>
+                    </div>
+                </a>
+                <a href="/admin/api/storage/" class="action-card">
+                    <div class="action-card-header">
+                        <span class="icon">📦</span>
+                        <span class="title">Склад</span>
+                    </div>
+                    <div class="api-info">
+                        <span class="api-url">/admin/api/storage/</span>
+                    </div>
+                </a>
+                <a href="/admin/api/supplier/" class="action-card">
+                    <div class="action-card-header">
+                        <span class="icon">🚚</span>
+                        <span class="title">Поставщики</span>
+                    </div>
+                    <div class="api-info">
+                        <span class="api-url">/admin/api/supplier/</span>
+                    </div>
+                </a>
+                <a href="/admin/api/product/" class="action-card">
+                    <div class="action-card-header">
+                        <span class="icon">📋</span>
+                        <span class="title">Товары</span>
+                    </div>
+                    <div class="api-info">
+                        <span class="api-url">/admin/api/product/</span>
+                    </div>
+                </a>
+                <a href="/admin/api/supply/" class="action-card">
+                    <div class="action-card-header">
+                        <span class="icon">📥</span>
+                        <span class="title">Поставки</span>
+                    </div>
+                    <div class="api-info">
+                        <span class="api-url">/admin/api/supply/</span>
+                    </div>
+                </a>
+                <a href="/admin/api/supplyproduct/" class="action-card">
+                    <div class="action-card-header">
+                        <span class="icon">📦</span>
+                        <span class="title">Товары поставки</span>
+                    </div>
+                    <div class="api-info">
+                        <span class="api-url">/admin/api/supplyproduct/</span>
+                    </div>
+                </a>
+                <a href="/admin/api/sale/" class="action-card">
+                    <div class="action-card-header">
+                        <span class="icon">💰</span>
+                        <span class="title">Продажи</span>
+                    </div>
+                    <div class="api-info">
+                        <span class="api-url">/admin/api/sale/</span>
+                    </div>
+                </a>
+                <a href="/admin/api/productsale/" class="action-card">
+                    <div class="action-card-header">
+                        <span class="icon">📋</span>
+                        <span class="title">Товары продажи</span>
+                    </div>
+                    <div class="api-info">
+                        <span class="api-url">/admin/api/productsale/</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    {% endif %}
+    
+    {% if actions.api_docs %}
+        <div class="actions-section">
+            <div class="actions-section-header section-title-api">
+                <span class="icon">📖</span> Документация API
+            </div>
+            <div class="actions-grid">
+                {% for action in actions.api_docs %}
+                    <a href="{{ action.url }}" target="_blank" class="action-card">
+                        <div class="action-card-header">
+                            <span class="icon">{{ action.icon }}</span>
+                            <span class="title">{{ action.title }}</span>
+                        </div>
+                        <div class="description">{{ action.description }}</div>
+                        <div class="api-info">
+                            <span class="api-url">{{ action.url }}</span>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>

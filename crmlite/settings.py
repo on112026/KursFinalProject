@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_spectacular',
+    # api app should be after django.contrib.admin for template overrides to work
     'api',
 ]
 

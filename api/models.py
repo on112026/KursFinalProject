@@ -14,6 +14,20 @@ class User(AbstractUser):
         if not self.username:
             self.username = self.email
         super().save(*args, **kwargs)
+
+    def get_companies(self):
+        """
+        Возвращает QuerySet компаний, к которым имеет доступ пользователь:
+        - Компании, где он владелец (owner)
+        - Компании, где он в списке участников (users)
+        """
+        owner_companies = Company.objects.filter(owner=self)
+        member_companies = Company.objects.filter(users=self)
+        return owner_companies | member_companies
+
+    def can_access_company(self, company):
+        """Проверяет, имеет ли пользователь доступ к компании"""
+        return company.owner == self or company.users.filter(pk=self.pk).exists()
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['email'], name='unique_email')
@@ -24,6 +38,7 @@ class Company(models.Model):
     name = models.CharField(max_length=255)
     owner = models.OneToOneField(User, on_delete=models.CASCADE, related_name='company')
     users = models.ManyToManyField(User, related_name='company_users', blank=True)
+    created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
@@ -81,3 +96,28 @@ class SupplyProduct(models.Model):
 
     def __str__(self):
         return f"{self.product.title} x{self.quantity} in Supply #{self.supply.id}"
+
+
+class Sale(models.Model):
+    """Модель продажи"""
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='sales')
+    buyer_name = models.CharField(max_length=255)
+    date = models.DateTimeField(auto_now_add=True)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    def __str__(self):
+        return f"Sale #{self.id} - {self.buyer_name}"
+
+    class Meta:
+        ordering = ['-date']
+
+
+class ProductSale(models.Model):
+    """Промежуточная модель для связи Sale и Product"""
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='product_sales')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='product_sales')
+    quantity = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.product.title} x{self.quantity} in Sale #{self.sale.id}"

@@ -13,7 +13,8 @@ from .views import (
     GetStorageByIdView, CreateStorageView, UpdateStorageView,
     DeleteStorageView, SupplierListCreateView, SupplierDetailView,
     ProductListCreateView, ProductDetailView, SupplyListView,
-    SupplyCreateView, AttachUserToCompanyView
+    SupplyCreateView, AttachUserToCompanyView,
+    SaleCreateView, SaleListView, SaleDetailView
 )
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -40,6 +41,11 @@ urlpatterns = [
     # Supply endpoints
     path('supplies/', SupplyListView.as_view(), name='supplies_list'),
     path('supplies/create/', SupplyCreateView.as_view(), name='supply_create'),
+    
+    # Sale endpoints
+    path('sales/create/', SaleCreateView.as_view(), name='sales_create'),
+    path('sales/', SaleListView.as_view(), name='sales_list'),
+    path('sales/<int:sale_id>/', SaleDetailView.as_view(), name='sales_detail'),
     
     path('schema/', SpectacularJSONAPIView.as_view(), name='schema'),
     path('schema/yaml/', SpectacularYAMLAPIView.as_view(), name='schema-yaml'),
