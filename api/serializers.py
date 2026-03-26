@@ -43,20 +43,20 @@ class SupplierSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Supplier
-        fields = ['id', 'name', 'contact_info', 'company']
+        fields = ['id', 'name', 'inn', 'contact_info', 'company']
         read_only_fields = ['company']
 
 class SupplierCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Supplier
-        fields = ['id', 'name', 'contact_info']
+        fields = ['id', 'name', 'inn', 'contact_info']
 
 class ProductSerializer(serializers.ModelSerializer):
     storage = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'description', 'purchase_price', 'quantity', 'storage']
+        fields = ['id', 'title', 'description', 'purchase_price', 'sale_price', 'quantity', 'storage']
         read_only_fields = ['storage']
 
 class ProductCreateSerializer(serializers.ModelSerializer):
@@ -64,20 +64,20 @@ class ProductCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'description', 'purchase_price', 'storage_id']
+        fields = ['id', 'title', 'description', 'purchase_price', 'sale_price', 'storage_id']
 
 class ProductListSerializer(serializers.ModelSerializer):
     """Сериализатор для списка товаров (без storage_id)"""
     class Meta:
         model = Product
-        fields = ['id', 'title', 'description', 'purchase_price', 'quantity']
+        fields = ['id', 'title', 'description', 'purchase_price', 'sale_price', 'quantity']
 
 class SupplySerializer(serializers.ModelSerializer):
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
     
     class Meta:
         model = Supply
-        fields = ['id', 'supplier', 'supplier_name', 'storage', 'date']
+        fields = ['id', 'supplier', 'supplier_name', 'storage', 'delivery_date']
 
 class SupplyProductSerializer(serializers.ModelSerializer):
     product_title = serializers.CharField(source='product.title', read_only=True)
@@ -107,6 +107,13 @@ class AttachUserSerializer(serializers.Serializer):
         return data
 
 
+class EmployeeSerializer(serializers.ModelSerializer):
+    """Сериализатор для сотрудников компании"""
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'first_name', 'last_name', 'is_company_owner']
+
+
 class SupplyCreateResponseSerializer(serializers.ModelSerializer):
     """Сериализатор для ответа при создании поставки"""
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
@@ -114,7 +121,7 @@ class SupplyCreateResponseSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Supply
-        fields = ['id', 'supplier_name', 'date', 'products']
+        fields = ['id', 'supplier_name', 'delivery_date', 'products']
     
     def get_products(self, obj) -> List[Dict[str, Any]]:
         return list(SupplyProduct.objects.filter(supply=obj).values(
@@ -127,7 +134,7 @@ class SupplyListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Supply
-        fields = ['id', 'supplier_name', 'date']
+        fields = ['id', 'supplier_name', 'delivery_date']
 
 
 # ===== Sale Serializers =====
@@ -154,8 +161,8 @@ class SaleSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Sale
-        fields = ['id', 'buyer_name', 'date', 'total_amount', 'product_sales']
-        read_only_fields = ['id', 'date', 'total_amount']
+        fields = ['id', 'buyer_name', 'sale_date', 'total_amount', 'product_sales']
+        read_only_fields = ['id', 'total_amount']
 
 
 class SaleCreateSerializer(serializers.Serializer):
@@ -170,7 +177,7 @@ class SaleListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Sale
-        fields = ['id', 'buyer_name', 'date', 'total_amount', 'product_count']
+        fields = ['id', 'buyer_name', 'sale_date', 'total_amount', 'product_count']
     
     @extend_schema_field(OpenApiTypes.INT)
     def get_product_count(self, obj) -> int:
@@ -178,49 +185,30 @@ class SaleListSerializer(serializers.ModelSerializer):
 
 
 class SaleUpdateSerializer(serializers.ModelSerializer):
-    """Сериализатор для обновления продажи"""
-    product_sales = ProductSaleCreateSerializer(many=True, required=False)
+    """Сериализатор для обновления продажи - только buyer_name и sale_date"""
     
     class Meta:
         model = Sale
-        fields = ['buyer_name', 'product_sales']
+        fields = ['buyer_name', 'sale_date']
+    
+    def validate_sale_date(self, value):
+        """Дата продажи может быть только в прошлое или сегодня"""
+        from django.utils import timezone
+        from datetime import datetime, time
+        
+        today = timezone.now().date()
+        if value.date() > today:
+            raise serializers.ValidationError("Дата продажи не может быть в будущем")
+        return value
     
     def update(self, instance, validated_data):
-        product_sales_data = validated_data.pop('product_sales', None)
-        
         # Обновляем buyer_name если передан
         if 'buyer_name' in validated_data:
             instance.buyer_name = validated_data['buyer_name']
-            instance.save()
         
-        # Если переданы product_sales, обновляем их
-        if product_sales_data is not None:
-            # Удаляем старые связи
-            instance.product_sales.all().delete()
-            
-            total_amount = 0
-            for item in product_sales_data:
-                product_id = item['product']
-                quantity = item['quantity']
-                
-                try:
-                    product = Product.objects.get(id=product_id, storage=instance.company.storage)
-                except Product.DoesNotExist:
-                    raise serializers.ValidationError(f"Product with id {product_id} not found")
-                
-                # Используем purchase_price как цену продажи
-                price = product.purchase_price
-                
-                ProductSale.objects.create(
-                    sale=instance,
-                    product=product,
-                    quantity=quantity,
-                    price=price
-                )
-                
-                total_amount += price * quantity
-            
-            instance.total_amount = total_amount
-            instance.save()
+        # Обновляем sale_date если передан
+        if 'sale_date' in validated_data:
+            instance.sale_date = validated_data['sale_date']
         
+        instance.save()
         return instance

@@ -53,6 +53,7 @@ class Storage(models.Model):
 class Supplier(models.Model):
     """Модель поставщика"""
     name = models.CharField(max_length=255)
+    inn = models.CharField(max_length=12, blank=True, default='')
     contact_info = models.TextField(blank=True)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='suppliers')
 
@@ -67,6 +68,7 @@ class Product(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    sale_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     quantity = models.PositiveIntegerField(default=0)
     storage = models.ForeignKey(Storage, on_delete=models.CASCADE, related_name='products')
 
@@ -80,13 +82,13 @@ class Supply(models.Model):
     """Модель поставки товаров"""
     supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='supplies')
     storage = models.ForeignKey(Storage, on_delete=models.CASCADE, related_name='supplies')
-    date = models.DateTimeField(auto_now_add=True)
+    delivery_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Supply #{self.id} from {self.supplier.name}"
 
     class Meta:
-        ordering = ['-date']
+        ordering = ['-delivery_date']
 
 class SupplyProduct(models.Model):
     """Промежуточная модель для связи Supply и Product"""
@@ -102,14 +104,14 @@ class Sale(models.Model):
     """Модель продажи"""
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='sales')
     buyer_name = models.CharField(max_length=255)
-    date = models.DateTimeField(auto_now_add=True)
+    sale_date = models.DateTimeField()
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     def __str__(self):
         return f"Sale #{self.id} - {self.buyer_name}"
 
     class Meta:
-        ordering = ['-date']
+        ordering = ['-sale_date']
 
 
 class ProductSale(models.Model):

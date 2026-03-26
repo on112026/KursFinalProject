@@ -1,0 +1,58 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans 'Permission Denied' %} | {{ site_header|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">{{ site_header|default:_('Django admin') }}</a>
+</h1>
+{% endblock %}
+
+{% block content %}
+<div id="container">
+    <div class="module protestations">
+        <div class="form-row errors">
+            <h1>{% trans 'Permission Denied' %}</h1>
+            
+            <p class="errornote">
+                У вас недостаточно прав для выполнения этого действия.
+            </p>
+            
+            <p>
+                {% if has_company_access %}
+                    У вас нет прав для добавления объектов в админ-панели. 
+                    Эта функция доступна только для владельцев компаний.
+                {% else %}
+                    У вас нет активной компании в системе. 
+                    Для создания складов и других объектов необходимо сначала создать компанию.
+                {% endif %}
+            </p>
+            
+            {% if can_create_company %}
+                <div class="submit-row">
+                    <p>
+                        <strong>Вы можете создать компанию, если у вас её ещё нет:</strong>
+                    </p>
+                    <a href="{% url 'admin:api_company_add' %}" class="button default">
+                        {% trans 'Create Company' %}
+                    </a>
+                </div>
+            {% endif %}
+            
+            <h3>Почему это произошло?</h3>
+            <ul>
+                <li>Склады могут создавать только владельцы компаний, у которых уже записана компания в базе данных</li>
+                <li>Если у вас нет компании — сначала создайте её</li>
+                <li>Если у вас уже есть компания — обратитесь к администратору для получения прав</li>
+            </ul>
+            
+            <div class="submit-row">
+                <a href="{% url 'admin:index' %}" class="button">
+                    {% trans 'Back to Admin Home' %}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

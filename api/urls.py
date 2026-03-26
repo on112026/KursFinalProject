@@ -14,6 +14,7 @@ from .views import (
     DeleteStorageView, SupplierListCreateView, SupplierDetailView,
     ProductListCreateView, ProductDetailView, SupplyListView,
     SupplyCreateView, AttachUserToCompanyView,
+    EmployeeListView, EmployeeDeleteView,
     SaleCreateView, SaleListView, SaleDetailView
 )
 urlpatterns = [
@@ -24,6 +25,10 @@ urlpatterns = [
     path('company/update/', UpdateCompanyView.as_view(), name='update_company'),
     path('company/delete/', DeleteCompanyView.as_view(), name='delete_company'),
     path('company/attach-user/', AttachUserToCompanyView.as_view(), name='attach_user'),
+    
+    # Employee endpoints (owner only)
+    path('company/employees/', EmployeeListView.as_view(), name='employees_list'),
+    path('company/employees/<int:user_id>/', EmployeeDeleteView.as_view(), name='employees_delete'),
     path('storage/create/', CreateStorageView.as_view(), name='create_storage'),
     path('storage/', GetStorageView.as_view(), name='get_storage'),
     path('storage/<int:storage_id>/', GetStorageByIdView.as_view(), name='get_storage_by_id'),

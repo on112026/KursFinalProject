@@ -3,19 +3,18 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from drf_spectacular.utils import extend_schema, extend_schema_field, OpenApiParameter, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from drf_spectacular.types import OpenApiTypes
 from .models import User, Company, Storage, Supplier, Product, Supply, SupplyProduct, Sale, ProductSale
 from .serializers import (
     UserSerializer, CompanySerializer, StorageSerializer,
     SupplierSerializer, SupplierCreateSerializer,
     ProductSerializer, ProductCreateSerializer, ProductListSerializer,
-    SupplySerializer, SupplyCreateSerializer, SupplyListSerializer, SupplyCreateResponseSerializer,
-    AttachUserSerializer,
+    SupplyCreateSerializer, SupplyListSerializer, SupplyCreateResponseSerializer,
+    AttachUserSerializer, EmployeeSerializer,
     SaleSerializer, SaleCreateSerializer, SaleListSerializer, SaleUpdateSerializer,
     ProductSaleSerializer
 )
-from django.utils import timezone
 from datetime import datetime
 from rest_framework.exceptions import PermissionDenied
 from django.db import transaction
@@ -101,10 +100,10 @@ class GetCompanyView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if not hasattr(request.user, 'company') or not request.user.company:
+        company = get_user_company(request.user)
+        if not company:
             return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)
-
-        return Response(CompanySerializer(request.user.company).data)
+        return Response(CompanySerializer(company).data)
 
 
 class UpdateCompanyView(GenericAPIView):
@@ -112,6 +111,19 @@ class UpdateCompanyView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
+        if not hasattr(request.user, 'company') or not request.user.company:
+            return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user.company.owner != request.user:
+            raise PermissionDenied('Only company owner can update company')
+
+        serializer = CompanySerializer(request.user.company, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(CompanySerializer(request.user.company).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
         if not hasattr(request.user, 'company') or not request.user.company:
             return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -192,6 +204,21 @@ class UpdateStorageView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request, storage_id):
+        try:
+            storage = Storage.objects.get(id=storage_id)
+        except Storage.DoesNotExist:
+            return Response({'error': 'Storage not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if storage.company.owner != request.user:
+            raise PermissionDenied('Only company owner can update storage')
+
+        serializer = StorageSerializer(storage, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(StorageSerializer(storage).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, storage_id):
         try:
             storage = Storage.objects.get(id=storage_id)
         except Storage.DoesNotExist:
@@ -505,7 +532,7 @@ class AttachUserToCompanyView(GenericAPIView):
 
         # Проверка, что пользователь - владелец компании
         if request.user.company.owner != request.user:
-            return Response({'error': 'Only company owner can attach users'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': 'Only company owner can manage employees'}, status=status.HTTP_403_FORBIDDEN)
 
         # Получаем user_id или email из запроса
         user_id = request.data.get('user_id')
@@ -536,6 +563,66 @@ class AttachUserToCompanyView(GenericAPIView):
         return Response({
             'message': f'User {user_to_attach.email} has been attached to company {request.user.company.name}'
         }, status=status.HTTP_200_OK)
+
+
+class EmployeeListView(GenericAPIView):
+    """Список сотрудников компании (только для владельца)"""
+    serializer_class = EmployeeSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: EmployeeSerializer(many=True)},
+        operation_id="employees_list"
+    )
+    def get(self, request):
+        """Получить список сотрудников компании"""
+        if not hasattr(request.user, 'company') or not request.user.company:
+            return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Проверка, что пользователь - владелец компании
+        if request.user.company.owner != request.user:
+            return Response({'error': 'Only company owner can view employees'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Получаем список сотрудников (пользователей в ManyToMany)
+        employees = request.user.company.users.all()
+        return Response(EmployeeSerializer(employees, many=True).data)
+
+
+class EmployeeDeleteView(GenericAPIView):
+    """Удаление сотрудника из компании (только для владельца)"""
+    serializer_class = EmployeeSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={204: OpenApiResponse(description='Employee removed successfully')},
+        operation_id="employees_delete"
+    )
+    def delete(self, request, user_id):
+        """Удалить сотрудника из компании"""
+        if not hasattr(request.user, 'company') or not request.user.company:
+            return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Проверка, что пользователь - владелец компании
+        if request.user.company.owner != request.user:
+            return Response({'error': 'Only company owner can manage employees'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Проверяем, что не пытаемся удалить владельца
+        if request.user.company.owner_id == user_id:
+            return Response({'error': 'Cannot remove company owner'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Проверяем, что сотрудник существует и привязан к компании
+        try:
+            user_to_remove = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not request.user.company.users.filter(id=user_id).exists():
+            return Response({'error': 'User is not attached to this company'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Удаляем пользователя из компании
+        request.user.company.users.remove(user_to_remove)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # ===== Sale Views =====
@@ -571,10 +658,12 @@ class SaleCreateView(GenericAPIView):
 
         try:
             with transaction.atomic():
-                # Создаем продажу
+                # Создаем продажу с текущей датой
+                from django.utils import timezone
                 sale = Sale.objects.create(
                     company=company,
                     buyer_name=buyer_name,
+                    sale_date=timezone.now(),
                     total_amount=0
                 )
 
@@ -594,8 +683,8 @@ class SaleCreateView(GenericAPIView):
                     if product.quantity < quantity:
                         raise ValueError(f"Not enough quantity for product '{product.title}'. Available: {product.quantity}")
 
-                    # Используем purchase_price как цену продажи
-                    price = product.purchase_price
+                    # Используем sale_price как цену продажи
+                    price = product.sale_price
 
                     # Уменьшаем количество товара на складе
                     product.quantity -= quantity
@@ -654,7 +743,7 @@ class SaleListView(GenericAPIView):
         if date_from:
             try:
                 date_from_parsed = datetime.strptime(date_from, '%Y-%m-%d')
-                sales = sales.filter(date__gte=date_from_parsed)
+                sales = sales.filter(sale_date__gte=date_from_parsed)
             except ValueError:
                 return Response({'error': 'Invalid date_from format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -664,7 +753,7 @@ class SaleListView(GenericAPIView):
                 # Добавляем 1 день, чтобы включить весь день
                 from datetime import timedelta
                 date_to_parsed = date_to_parsed + timedelta(days=1)
-                sales = sales.filter(date__lt=date_to_parsed)
+                sales = sales.filter(sale_date__lt=date_to_parsed)
             except ValueError:
                 return Response({'error': 'Invalid date_to format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -716,64 +805,17 @@ class SaleDetailView(GenericAPIView):
         operation_id="sales_update"
     )
     def put(self, request, sale_id):
+        """Обновление продажи - только buyer_name и sale_date"""
         sale = self.get_object(sale_id, request.user)
         if not sale:
             return Response({'error': 'Sale not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        # Собираем old quantities для возврата на склад
-        old_product_sales = {
-            ps.product_id: ps.quantity 
-            for ps in sale.product_sales.all()
-        }
 
         serializer = SaleUpdateSerializer(sale, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            with transaction.atomic():
-                # Возвращаем старые товары на склад
-                for product_id, quantity in old_product_sales.items():
-                    try:
-                        product = Product.objects.get(id=product_id)
-                        product.quantity += quantity
-                        product.save()
-                    except Product.DoesNotExist:
-                        pass  # Игнорируем, если товар был удален
-
-                # Обновляем продажу
-                updated_sale = serializer.save()
-
-                # Возвращаем old quantities для пересчета
-                for product_id, quantity in old_product_sales.items():
-                    try:
-                        product = Product.objects.get(id=product_id)
-                        product.quantity -= quantity
-                        product.save()
-                    except Product.DoesNotExist:
-                        pass
-
-                # Уменьшаем количество новых товаров на складе
-                new_total = 0
-                for ps in updated_sale.product_sales.all():
-                    try:
-                        product = Product.objects.get(id=ps.product_id)
-                        if product.quantity < ps.quantity:
-                            raise ValueError(f"Not enough quantity for product '{product.title}'")
-                        product.quantity -= ps.quantity
-                        product.save()
-                    except Product.DoesNotExist:
-                        raise ValueError(f"Product not found")
-
-                    new_total += ps.price * ps.quantity
-
-                updated_sale.total_amount = new_total
-                updated_sale.save()
-
-            return Response(SaleSerializer(updated_sale).data)
-
-        except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        updated_sale = serializer.save()
+        return Response(SaleSerializer(updated_sale).data)
 
     @extend_schema(operation_id="sales_delete")
     def delete(self, request, sale_id):

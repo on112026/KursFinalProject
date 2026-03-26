@@ -267,7 +267,7 @@ class SupplierAdmin(CompanyFilterMixin, admin.ModelAdmin):
 # Product Admin
 # =============================================================================
 @admin.register(Product)
-class ProductAdmin(CompanyFilterMixin, admin.ModelAdmin):
+class ProductAdmin(admin.ModelAdmin):
     list_display = ['title', 'purchase_price', 'quantity', 'storage', 'get_company']
     search_fields = ['title', 'description', 'storage__company__name']
     list_filter = ['storage__company']
@@ -275,17 +275,73 @@ class ProductAdmin(CompanyFilterMixin, admin.ModelAdmin):
     def get_company(self, obj):
         return obj.storage.company.name
     get_company.short_description = 'Компания'
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        
+        user_companies = request.user.get_companies()
+        owner_companies = Company.objects.filter(owner=request.user)
+        member_companies = user_companies.filter(users=request.user)
+        visible_companies = owner_companies | member_companies
+        
+        # Product связан с Company через storage
+        return qs.filter(storage__company__in=visible_companies.distinct())
+    
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return True
+        if hasattr(obj, 'storage') and hasattr(obj.storage, 'company'):
+            user_companies = request.user.get_companies()
+            owner_companies = Company.objects.filter(owner=request.user)
+            member_companies = user_companies.filter(users=request.user)
+            visible_companies = owner_companies | member_companies
+            return obj.storage.company in visible_companies.distinct()
+        return True
+    
+    def has_change_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return True
+        if hasattr(obj, 'storage') and hasattr(obj.storage, 'company'):
+            user_companies = request.user.get_companies()
+            owner_companies = Company.objects.filter(owner=request.user)
+            member_companies = user_companies.filter(users=request.user)
+            visible_companies = owner_companies | member_companies
+            return obj.storage.company in visible_companies.distinct()
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return True
+        if hasattr(obj, 'storage') and hasattr(obj.storage, 'company'):
+            return obj.storage.company.owner == request.user
+        return True
+    
+    def has_add_permission(self, request):
+        if request.user.is_superuser:
+            return True
+        if request.user.is_staff:
+            has_company = request.user.get_companies().exists()
+            return has_company
+        return False
 
 
 # =============================================================================
 # Supply Admin
 # =============================================================================
 @admin.register(Supply)
-class SupplyAdmin(CompanyFilterMixin, admin.ModelAdmin):
-    list_display = ['id', 'supplier', 'storage', 'date', 'get_company', 'get_total_quantity']
-    list_filter = ['supplier', 'storage', 'date']
+class SupplyAdmin(admin.ModelAdmin):
+    list_display = ['id', 'supplier', 'storage', 'delivery_date', 'get_company', 'get_total_quantity']
+    list_filter = ['supplier', 'storage', 'delivery_date']
     search_fields = ['supplier__name', 'storage__company__name']
-    readonly_fields = ['date']
+    readonly_fields = ['delivery_date']
     
     def get_company(self, obj):
         return obj.storage.company.name
@@ -295,6 +351,62 @@ class SupplyAdmin(CompanyFilterMixin, admin.ModelAdmin):
         total = sum(sp.quantity for sp in obj.supply_products.all())
         return total
     get_total_quantity.short_description = 'Всего товаров'
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        
+        user_companies = request.user.get_companies()
+        owner_companies = Company.objects.filter(owner=request.user)
+        member_companies = user_companies.filter(users=request.user)
+        visible_companies = owner_companies | member_companies
+        
+        # Supply связан с Company через storage
+        return qs.filter(storage__company__in=visible_companies.distinct())
+    
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return True
+        if hasattr(obj, 'storage') and hasattr(obj.storage, 'company'):
+            user_companies = request.user.get_companies()
+            owner_companies = Company.objects.filter(owner=request.user)
+            member_companies = user_companies.filter(users=request.user)
+            visible_companies = owner_companies | member_companies
+            return obj.storage.company in visible_companies.distinct()
+        return True
+    
+    def has_change_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return True
+        if hasattr(obj, 'storage') and hasattr(obj.storage, 'company'):
+            user_companies = request.user.get_companies()
+            owner_companies = Company.objects.filter(owner=request.user)
+            member_companies = user_companies.filter(users=request.user)
+            visible_companies = owner_companies | member_companies
+            return obj.storage.company in visible_companies.distinct()
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return True
+        if hasattr(obj, 'storage') and hasattr(obj.storage, 'company'):
+            return obj.storage.company.owner == request.user
+        return True
+    
+    def has_add_permission(self, request):
+        if request.user.is_superuser:
+            return True
+        if request.user.is_staff:
+            has_company = request.user.get_companies().exists()
+            return has_company
+        return False
 
 
 # =============================================================================
@@ -322,10 +434,10 @@ class SupplyProductAdmin(CompanyFilterMixin, admin.ModelAdmin):
 # =============================================================================
 @admin.register(Sale)
 class SaleAdmin(CompanyFilterMixin, admin.ModelAdmin):
-    list_display = ['id', 'buyer_name', 'company', 'date', 'total_amount', 'get_items_count']
-    list_filter = ['company', 'date']
+    list_display = ['id', 'buyer_name', 'company', 'sale_date', 'total_amount', 'get_items_count']
+    list_filter = ['company', 'sale_date']
     search_fields = ['buyer_name', 'company__name']
-    readonly_fields = ['date', 'total_amount']
+    readonly_fields = ['total_amount']
     inlines = []
     
     def get_items_count(self, obj):
