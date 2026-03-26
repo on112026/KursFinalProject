@@ -449,6 +449,9 @@ class SupplyListView(GenericAPIView):
         if not company:
             return Response({'error': 'User has no company'}, status=status.HTTP_404_NOT_FOUND)
 
+        if not hasattr(company, 'storage') or not company.storage:
+            return Response({'error': 'Storage not found'}, status=status.HTTP_404_NOT_FOUND)
+
         supplies = Supply.objects.filter(storage=company.storage)
         return Response(SupplyListSerializer(supplies, many=True).data)
 

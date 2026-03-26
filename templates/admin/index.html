@@ -57,7 +57,7 @@
             {% endfor %}
         </div>
     {% else %}
-        <p>{% trans "You don't have permission to view or edit anything." %}</p>
+        <p>{% trans "Редактирование формы этой страницы доступно только с правами superuser и администраторам проекта." %}</p>
     {% endif %}
 </div>
 {% endblock %}
