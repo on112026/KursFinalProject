@@ -158,10 +158,11 @@ class GetStorageView(GenericAPIView):
 
     @extend_schema(operation_id="storage_list")
     def get(self, request):
-        if not hasattr(request.user, 'company') or not request.user.company or not hasattr(request.user.company, 'storage') or not request.user.company.storage:
+        company = get_user_company(request.user)
+        if not company or not hasattr(company, 'storage') or not company.storage:
             return Response({'error': 'Storage not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        return Response(StorageSerializer(request.user.company.storage).data)
+        return Response(StorageSerializer(company.storage).data)
 
 
 class GetStorageByIdView(GenericAPIView):
@@ -305,6 +306,17 @@ class SupplierDetailView(GenericAPIView):
         return Response(SupplierSerializer(supplier).data)
 
     def put(self, request, supplier_id):
+        supplier = self.get_object(supplier_id, request.user)
+        if not supplier:
+            return Response({'error': 'Supplier not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = SupplierCreateSerializer(supplier, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(SupplierSerializer(supplier).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, supplier_id):
         supplier = self.get_object(supplier_id, request.user)
         if not supplier:
             return Response({'error': 'Supplier not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -806,6 +818,19 @@ class SaleDetailView(GenericAPIView):
     )
     def put(self, request, sale_id):
         """Обновление продажи - только buyer_name и sale_date"""
+        sale = self.get_object(sale_id, request.user)
+        if not sale:
+            return Response({'error': 'Sale not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = SaleUpdateSerializer(sale, data=request.data, partial=False)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        updated_sale = serializer.save()
+        return Response(SaleSerializer(updated_sale).data)
+
+    def patch(self, request, sale_id):
+        """Частичное обновление продажи - только buyer_name и sale_date"""
         sale = self.get_object(sale_id, request.user)
         if not sale:
             return Response({'error': 'Sale not found'}, status=status.HTTP_404_NOT_FOUND)
