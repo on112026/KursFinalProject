@@ -15,7 +15,8 @@ from .serializers import (
     SaleSerializer, SaleCreateSerializer, SaleListSerializer, SaleUpdateSerializer,
     ProductSaleSerializer
 )
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.utils import timezone as dj_timezone
 from rest_framework.exceptions import PermissionDenied
 from django.db import transaction
 
@@ -758,7 +759,8 @@ class SaleListView(GenericAPIView):
         if date_from:
             try:
                 date_from_parsed = datetime.strptime(date_from, '%Y-%m-%d')
-                sales = sales.filter(sale_date__gte=date_from_parsed)
+                date_from_aware = dj_timezone.make_aware(date_from_parsed)
+                sales = sales.filter(sale_date__gte=date_from_aware)
             except ValueError:
                 return Response({'error': 'Invalid date_from format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -766,9 +768,9 @@ class SaleListView(GenericAPIView):
             try:
                 date_to_parsed = datetime.strptime(date_to, '%Y-%m-%d')
                 # Добавляем 1 день, чтобы включить весь день
-                from datetime import timedelta
-                date_to_parsed = date_to_parsed + timedelta(days=1)
-                sales = sales.filter(sale_date__lt=date_to_parsed)
+                date_to_aware = dj_timezone.make_aware(date_to_parsed)
+                date_to_aware = date_to_aware + timedelta(days=1)
+                sales = sales.filter(sale_date__lt=date_to_aware)
             except ValueError:
                 return Response({'error': 'Invalid date_to format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
 

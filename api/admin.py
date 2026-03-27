@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db.models import Q
 from .models import User, Company, Storage, Supplier, Product, Supply, SupplyProduct, Sale, ProductSale
 
 
@@ -43,10 +44,10 @@ class CompanyFilterMixin:
         form = super().get_form(request, obj, **kwargs)
         
         # Для не-суперпользователей фильтруем выбор компании
+        # Используем прямые запросы для актуальности данных
         if hasattr(form.base_fields, 'company') and not request.user.is_superuser:
-            user_companies = request.user.get_companies()
             owner_companies = Company.objects.filter(owner=request.user)
-            member_companies = user_companies.filter(users=request.user)
+            member_companies = Company.objects.filter(users=request.user)
             visible_companies = owner_companies | member_companies
             form.base_fields['company'].queryset = visible_companies.distinct()
         
@@ -107,10 +108,13 @@ class CompanyFilterMixin:
         if request.user.is_superuser:
             return True
         
-        # Staff-пользователь может добавлять ТОЛЬКО если у него уже есть компания
+        # Staff-пользователь может добавлять если у него есть компания
+        # Используем прямой запрос для актуальности данных
         if request.user.is_staff:
-            has_company = request.user.get_companies().exists()
-            return has_company  # True если компания есть, False если нет
+            has_company = Company.objects.filter(
+                Q(owner=request.user) | Q(users=request.user)
+            ).exists()
+            return has_company
         
         return False
 
@@ -449,8 +453,9 @@ class SaleAdmin(CompanyFilterMixin, admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         
         if hasattr(form.base_fields, 'company') and not request.user.is_superuser:
+            # Используем прямые запросы для актуальности данных
             owner_companies = Company.objects.filter(owner=request.user)
-            member_companies = request.user.get_companies().filter(users=request.user)
+            member_companies = Company.objects.filter(users=request.user)
             visible_companies = owner_companies | member_companies
             form.base_fields['company'].queryset = visible_companies.distinct()
         
